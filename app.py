@@ -2618,6 +2618,48 @@ st.markdown(
         border-radius: 12px !important;
     }
 
+    /* FIX V4: levi meni bez duplog skrola.
+       Ostaje otvoren, sužen i bez unutrašnjih scrollbar-ova. */
+    section[data-testid="stSidebar"] {
+        min-width: 190px !important;
+        max-width: 205px !important;
+        width: 200px !important;
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+
+    section[data-testid="stSidebar"] > div,
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        overflow: hidden !important;
+        height: auto !important;
+        max-height: none !important;
+        padding-bottom: .6rem !important;
+    }
+
+    section[data-testid="stSidebar"]::-webkit-scrollbar,
+    section[data-testid="stSidebar"] > div::-webkit-scrollbar,
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"]::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+    }
+
+    section[data-testid="stSidebar"] h3 {
+        font-size: 15px !important;
+        margin-bottom: 6px !important;
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label {
+        padding: 5px 8px !important;
+        margin-bottom: 5px !important;
+        min-height: 34px !important;
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label p {
+        font-size: 13px !important;
+        line-height: 1.15 !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -2872,15 +2914,25 @@ with f1:
             izabrani_mesec = meseci[oznake_meseci.index(izabrani_mesec_oznaka)]
 
             c_svi, c_ocisti = st.columns(2)
+            # Važno: dugme označava samo dane iz trenutno izabranog meseca,
+            # a ne sve datume iz celog Excel fajla.
+            datumi_iz_meseca = sorted(
+                d.isoformat()
+                for d in svi_datumi
+                if d.year == izabrani_mesec.year and d.month == izabrani_mesec.month
+            )
+
+            c_svi, c_ocisti = st.columns(2)
             with c_svi:
-                if st.button("Označi sve dane", use_container_width=True):
-                    st.session_state[datum_key] = sorted(dostupni_iso)
+                if st.button("Označi dane iz meseca", use_container_width=True):
+                    st.session_state[datum_key] = datumi_iz_meseca
                     st.rerun()
             with c_ocisti:
                 if st.button("Očisti izbor", use_container_width=True):
                     st.session_state[datum_key] = []
                     st.rerun()
 
+            st.caption(f"Označava se samo mesec {izabrani_mesec.strftime('%m.%Y')}.")
             st.markdown("**PON UTO SRE ČET PET SUB NED**")
             kal = calendar.Calendar(firstweekday=0)
             for nedelja in kal.monthdayscalendar(izabrani_mesec.year, izabrani_mesec.month):
