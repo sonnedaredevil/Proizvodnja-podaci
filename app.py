@@ -2284,12 +2284,33 @@ st.markdown(
     }
 
     .toolbar-card {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.90));
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.92));
         border: 1px solid rgba(56, 189, 248, 0.28);
-        border-radius: 22px;
-        padding: 18px 18px 8px 18px;
-        margin-bottom: 18px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+        border-radius: 16px;
+        padding: 8px 12px 2px 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .toolbar-card label {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #bfdbfe !important;
+        margin-bottom: 1px !important;
+    }
+
+    .toolbar-card [data-testid="stVerticalBlock"] {
+        gap: 0.15rem !important;
+    }
+
+    .toolbar-card [data-testid="stFileUploader"] {
+        margin-top: -4px !important;
+    }
+
+    .toolbar-card [data-testid="stFileUploader"] section {
+        min-height: 38px !important;
+        padding: 4px 8px !important;
+        border-radius: 12px !important;
     }
 
     .hero-title {
@@ -2600,21 +2621,9 @@ sekcije = [
 st.sidebar.markdown("### Navigacija")
 aktivna_sekcija = st.sidebar.radio("Izaberi tab", sekcije, label_visibility="collapsed")
 st.sidebar.markdown("---")
-st.sidebar.caption("Filteri su premešteni u gornji toolbar.")
-
-folder_slika = os.path.join(os.path.dirname(__file__), "slike")
-slika_raspolozen = os.path.join(folder_slika, "file_00000000bb647230ab832909ff13bcb9.png")
-slika_ljut = os.path.join(folder_slika, "file_000000009aec71fda59a0d85ccb0af5.png")
+st.sidebar.caption("Filteri su u uskom gornjem toolbar-u.")
 
 if "overlay_slika" not in st.session_state:
-    st.session_state.overlay_slika = None
-
-st.sidebar.markdown("### Reakcija kolege 😄")
-if st.sidebar.button("✅ Dobri rezultati", use_container_width=True):
-    st.session_state.overlay_slika = {"putanja": slika_raspolozen, "naslov": "Dobri rezultati — kolega je zadovoljan 😄"}
-if st.sidebar.button("🚨 Loši rezultati", use_container_width=True):
-    st.session_state.overlay_slika = {"putanja": slika_ljut, "naslov": "Loši rezultati — neko će objašnjavati zastoje i škart 😡"}
-if st.sidebar.button("❌ Zatvori sliku", use_container_width=True):
     st.session_state.overlay_slika = None
 
 # ============================================================
@@ -2622,29 +2631,18 @@ if st.sidebar.button("❌ Zatvori sliku", use_container_width=True):
 # ============================================================
 
 st.markdown('<div class="toolbar-card">', unsafe_allow_html=True)
-up_col, info_col = st.columns([1.4, 2.6])
+up_col, refresh_col, empty_col = st.columns([2.2, 0.9, 5.2])
 with up_col:
     uploaded_file = st.file_uploader(
-        "Učitaj Production realization Excel fajl",
+        "Excel fajl",
         type=["xlsx"],
-        help="Korisnik bira fajl sa svog računara ili firminog servera. Cloud aplikacija ne čita direktno R: disk."
+        help="Učitaj mesečni Production realization Excel fajl.",
     )
-    if st.button("🔄 Osveži / očisti cache", use_container_width=True):
+with refresh_col:
+    st.markdown("<div style='height: 23px'></div>", unsafe_allow_html=True)
+    if st.button("🔄", help="Osveži / očisti cache", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-with info_col:
-    st.markdown(
-        """
-        <div style="padding: 10px 4px 0 4px;">
-            <div style="font-size:20px;font-weight:900;color:#fff;">Gornji toolbar</div>
-            <div style="color:#bfdbfe;font-size:14px;line-height:1.5;">
-                Učitaj mesečni Excel fajl, zatim biraj datum, projekat, proces i mašinu.
-                Sva pravila za notes, zastoje, NOK, imena kolega i mapiranje ostaju uključena.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file is None:
@@ -2702,9 +2700,36 @@ for p in sorted(df["Proces"].dropna().unique()):
         svi_procesi.append(p)
 
 st.markdown('<div class="toolbar-card">', unsafe_allow_html=True)
-f1, f2, f3, f4, f5 = st.columns([1.4, 1.35, 1.35, 1.8, 1.25])
+f1, f2, f3, f4, f5 = st.columns([1.25, 1.25, 1.25, 1.65, 1.05])
 with f1:
-    izabrani_datumi = st.multiselect("Datum", svi_datumi, default=svi_datumi[-1:] if svi_datumi else [])
+    if svi_datumi:
+        opseg_datuma = st.date_input(
+            "Datum",
+            value=(svi_datumi[-1], svi_datumi[-1]),
+            min_value=svi_datumi[0],
+            max_value=svi_datumi[-1],
+            format="DD.MM.YYYY",
+        )
+    else:
+        opseg_datuma = ()
+
+start_datum = None
+end_datum = None
+if isinstance(opseg_datuma, tuple):
+    if len(opseg_datuma) == 2:
+        start_datum, end_datum = opseg_datuma
+    elif len(opseg_datuma) == 1:
+        start_datum = end_datum = opseg_datuma[0]
+elif opseg_datuma:
+    start_datum = end_datum = opseg_datuma
+
+if start_datum and end_datum and start_datum > end_datum:
+    start_datum, end_datum = end_datum, start_datum
+
+izabrani_datumi = []
+if start_datum and end_datum:
+    izabrani_datumi = [d for d in svi_datumi if start_datum <= d <= end_datum]
+
 with f2:
     izabrani_projekti = st.multiselect("Projekat", svi_projekti, default=svi_projekti)
 with f3:
@@ -2720,7 +2745,7 @@ sve_masine = sorted(df_za_masine["Masina"].dropna().unique())
 with f4:
     izabrane_masine = st.multiselect("Mašina", sve_masine, default=sve_masine)
 with f5:
-    tip_grafikona = st.selectbox("Grafikoni", ["Stubičasti", "Linijski", "Površinski"], index=0)
+    tip_grafikona = st.selectbox("Grafikon", ["Stubičasti", "Linijski", "Površinski"], index=0)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
