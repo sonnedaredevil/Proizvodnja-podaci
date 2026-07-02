@@ -19,6 +19,8 @@ RECI_KOJE_SE_BRISU_IZ_RAZLOGA = [
     "atila",
     "čolak",
     "colak",
+    "maja",
+    "bukarac",
 ]
 
 def finalno_ocisti_razlog_od_imena(vrednost):
@@ -71,6 +73,7 @@ def finalno_ocisti_df_razloge(df):
             df[kol] = df[kol].apply(finalno_ocisti_razlog_od_imena)
 
     if "Razlog" in df.columns:
+        df = df[~df["Razlog"].astype(str).apply(da_li_je_excel_threaded_comment_poruka)].copy()
         df = df[df["Razlog"].astype(str).str.strip() != ""].copy()
 
     return df
@@ -717,7 +720,27 @@ def ocisti_tekst(vrednost):
     return tekst
 
 
+
+def da_li_je_excel_threaded_comment_poruka(tekst):
+    """
+    Excel ponekad u tekst komentara ubaci sistemsku poruku o threaded comment-u.
+    To nije razlog zastoja i ne sme da uđe u grafikone/tabele.
+    """
+    t = str(tekst or "").lower()
+    obrasci = [
+        "threaded comment",
+        "your version of excel allows you to read this threaded comment",
+        "any edits to it will get removed",
+        "go.microsoft.com/fwlink",
+        "learn more https",
+        "[threaded comment]",
+    ]
+    return any(o in t for o in obrasci)
+
 def normalizuj_razlog(razlog):
+    if da_li_je_excel_threaded_comment_poruka(razlog):
+        return "nije upisan razlog"
+
     # === CISCENJE IMENA U normalizuj_razlog ===
     razlog = finalno_ocisti_razlog_od_imena(razlog)
     if razlog is None:
@@ -755,13 +778,14 @@ def ocisti_note(note):
         "Valentina Savatic",
         "Atila Čolak",
         "Atila Colak",
+        "Maja Bukarac",
         "operacije",
         "Operacije",
         "OPERACIJE",
     ]
 
     for pojam in ignorisi_pojmove:
-        tekst = tekst.replace(pojam, "")
+        tekst = re.sub(re.escape(pojam), "", tekst, flags=re.IGNORECASE)
 
     tekst = tekst.replace(":", " ")
     tekst = tekst.replace("\r", "\n").strip()
@@ -769,6 +793,8 @@ def ocisti_note(note):
     linije = []
     for linija in tekst.split("\n"):
         linija = linija.strip()
+        if da_li_je_excel_threaded_comment_poruka(linija):
+            continue
         if linija:
             linije.append(linija)
 
@@ -1348,6 +1374,8 @@ def podeli_note_na_stavke(note):
 
     for linija in tekst.split("\n"):
         linija = linija.strip()
+        if da_li_je_excel_threaded_comment_poruka(linija):
+            continue
         if linija:
             delovi.append(linija)
 
@@ -1367,6 +1395,9 @@ def parsiraj_nok_note(note):
     )
 
     for stavka in stavke:
+        if da_li_je_excel_threaded_comment_poruka(stavka) or da_li_je_samo_ime_kolege(stavka):
+            continue
+
         m = pattern.match(stavka)
 
         if m:
@@ -1440,6 +1471,9 @@ def parsiraj_stop_note(note, vrednost_celije):
         stavka = str(stavka).strip()
 
         if stavka == "":
+            continue
+
+        if da_li_je_excel_threaded_comment_poruka(stavka):
             continue
 
         # Autor note-a, npr. "Bojan Smiljanić" ili "Dimitrije Miler", nije razlog zastoja.
@@ -2539,6 +2573,23 @@ st.markdown(
         background: rgba(2,6,23,.96) !important;
         border-right: 1px solid rgba(56,189,248,.22) !important;
     }
+
+    /* Sidebar mora da ostane otvoren: sakrij dugmad za skupljanje/otvaranje menija */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapseButton"],
+    button[data-testid="stSidebarCollapseButton"],
+    button[title="Hide sidebar"],
+    button[title="Show sidebar"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        transform: none !important;
+        visibility: visible !important;
+    }
+
 
     section[data-testid="stSidebar"] [role="radiogroup"] label {
         border: 1px solid rgba(56,189,248,.18) !important;
