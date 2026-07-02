@@ -80,7 +80,8 @@ import shutil
 import base64
 import tempfile
 import hashlib
-from datetime import datetime
+from datetime import datetime, date
+import calendar
 
 import pandas as pd
 import streamlit as st
@@ -94,10 +95,11 @@ from openpyxl import load_workbook
 
 st.set_page_config(
     page_title="Proizvodnja dashboard",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("📊 Proizvodnja dashboard")
+# Naslov se prikazuje kasnije kroz prilagođeni HTML, centrirano.
 
 
 # ============================================================
@@ -292,10 +294,6 @@ def postavi_pozadinsku_sliku():
     putanja_slike = pronadji_pozadinsku_sliku()
 
     if putanja_slike is None:
-        st.warning(
-            "Pozadinska slika nije pronađena u folderu 'slike'. "
-            "Proveri naziv i ekstenziju fajla."
-        )
         return
 
     with open(putanja_slike, "rb") as fajl:
@@ -2469,6 +2467,106 @@ st.markdown(
         background: rgba(15, 23, 42, 0.85) !important;
         color: #ffffff !important;
     }
+
+
+    /* KOMPAKTAN LAYOUT ZA ONLINE VERZIJU */
+    .block-container {
+        padding-top: 0.6rem !important;
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
+    }
+
+    .hero-title {
+        width: 100%;
+        text-align: center;
+        font-size: clamp(30px, 3.1vw, 52px);
+        line-height: 1.15;
+        font-weight: 1000;
+        letter-spacing: .2px;
+        color: #ffffff !important;
+        text-shadow: 0 0 22px rgba(56,189,248,.35);
+        margin: 4px 0 12px 0;
+        padding: 8px 0 2px 0;
+        white-space: normal;
+        overflow: visible;
+    }
+
+    .toolbar-card {
+        background: rgba(2, 6, 23, .70);
+        border: 1px solid rgba(56,189,248,.22);
+        border-radius: 14px;
+        padding: 8px 10px;
+        margin: 4px 0 10px 0;
+        box-shadow: 0 12px 30px rgba(0,0,0,.24);
+        backdrop-filter: blur(10px);
+    }
+
+    .toolbar-card label, .toolbar-card p {
+        font-size: 12px !important;
+        margin-bottom: 2px !important;
+        color: #bfdbfe !important;
+        font-weight: 800 !important;
+    }
+
+    .toolbar-card [data-testid="stFileUploader"] section {
+        min-height: 46px !important;
+        padding: 4px 8px !important;
+        border-radius: 12px !important;
+    }
+
+    .toolbar-card [data-testid="stFileUploader"] section > div {
+        padding: 0 !important;
+    }
+
+    .toolbar-card [data-testid="stFileUploader"] small,
+    .toolbar-card [data-testid="stFileUploader"] button,
+    .toolbar-card [data-testid="stFileUploaderDropzoneInstructions"] {
+        font-size: 11px !important;
+    }
+
+    .toolbar-card div[data-baseweb="select"] > div,
+    .toolbar-card div[data-testid="stDateInput"] input,
+    .toolbar-card button[kind="secondary"] {
+        min-height: 40px !important;
+        height: 40px !important;
+    }
+
+    /* Sidebar uži i uvek pregledan */
+    section[data-testid="stSidebar"] {
+        min-width: 205px !important;
+        max-width: 220px !important;
+        width: 215px !important;
+        background: rgba(2,6,23,.96) !important;
+        border-right: 1px solid rgba(56,189,248,.22) !important;
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label {
+        border: 1px solid rgba(56,189,248,.18) !important;
+        border-radius: 12px !important;
+        margin-bottom: 7px !important;
+        padding: 7px 9px !important;
+        background: rgba(15,23,42,.62) !important;
+    }
+
+    /* Ako se negde otvori native kalendar, tekst neka bude taman i čitljiv */
+    div[data-baseweb="calendar"], div[data-baseweb="calendar"] * {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+    }
+
+    div[data-baseweb="calendar"] button {
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a !important;
+    }
+
+    /* Popover kalendar za izbor pojedinačnih dana */
+    div[data-testid="stPopover"] button {
+        background: rgba(15,23,42,.98) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(56,189,248,.28) !important;
+        border-radius: 12px !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -2478,7 +2576,6 @@ st.markdown(
 st.markdown(
     """
     <div class="hero-title">🚀 Proizvodnja dashboard</div>
-    <div class="hero-sub">Online verzija · korisnik sam učitava Excel fajl · filteri su u gornjem toolbar-u</div>
     """,
     unsafe_allow_html=True
 )
@@ -2621,7 +2718,7 @@ sekcije = [
 st.sidebar.markdown("### Navigacija")
 aktivna_sekcija = st.sidebar.radio("Izaberi tab", sekcije, label_visibility="collapsed")
 st.sidebar.markdown("---")
-st.sidebar.caption("Filteri su u uskom gornjem toolbar-u.")
+st.sidebar.caption("Sekcije programa")
 
 if "overlay_slika" not in st.session_state:
     st.session_state.overlay_slika = None
@@ -2631,15 +2728,15 @@ if "overlay_slika" not in st.session_state:
 # ============================================================
 
 st.markdown('<div class="toolbar-card">', unsafe_allow_html=True)
-up_col, refresh_col, empty_col = st.columns([2.2, 0.9, 5.2])
+up_col, refresh_col = st.columns([5.5, 0.55])
 with up_col:
     uploaded_file = st.file_uploader(
         "Excel fajl",
         type=["xlsx"],
         help="Učitaj mesečni Production realization Excel fajl.",
+        label_visibility="collapsed",
     )
 with refresh_col:
-    st.markdown("<div style='height: 23px'></div>", unsafe_allow_html=True)
     if st.button("🔄", help="Osveži / očisti cache", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -2700,40 +2797,71 @@ for p in sorted(df["Proces"].dropna().unique()):
         svi_procesi.append(p)
 
 st.markdown('<div class="toolbar-card">', unsafe_allow_html=True)
-f1, f2, f3, f4, f5 = st.columns([1.25, 1.25, 1.25, 1.65, 1.05])
+f1, f2, f3, f4, f5 = st.columns([1.15, 1.05, 1.05, 1.55, 0.95])
+
+# --- DATUM: kompaktan popover kalendar za izbor pojedinačnih dana ---
+datum_key = f"izabrani_datumi_{fajl_hash}"
+if datum_key not in st.session_state:
+    st.session_state[datum_key] = [svi_datumi[-1].isoformat()] if svi_datumi else []
+
+# Ukloni datume koji ne postoje u trenutno učitanom fajlu.
+dostupni_iso = {d.isoformat() for d in svi_datumi}
+st.session_state[datum_key] = [d for d in st.session_state[datum_key] if d in dostupni_iso]
+
 with f1:
-    if svi_datumi:
-        opseg_datuma = st.date_input(
-            "Datum",
-            value=(svi_datumi[-1], svi_datumi[-1]),
-            min_value=svi_datumi[0],
-            max_value=svi_datumi[-1],
-            format="DD.MM.YYYY",
-        )
-    else:
-        opseg_datuma = ()
+    broj_dana = len(st.session_state[datum_key])
+    natpis = "Svi datumi" if broj_dana == 0 else f"Datum · {broj_dana} dan(a)"
+    with st.popover(natpis, use_container_width=True):
+        st.caption("Klikni na dane koje želiš da prikažeš. Ako ništa nije označeno, prikazuju se svi dani.")
+        if svi_datumi:
+            meseci = sorted({date(d.year, d.month, 1) for d in svi_datumi})
+            oznake_meseci = [m.strftime("%m.%Y") for m in meseci]
+            podrazumevani_mesec = max(0, len(meseci) - 1)
+            izabrani_mesec_oznaka = st.selectbox("Mesec", oznake_meseci, index=podrazumevani_mesec)
+            izabrani_mesec = meseci[oznake_meseci.index(izabrani_mesec_oznaka)]
 
-start_datum = None
-end_datum = None
-if isinstance(opseg_datuma, tuple):
-    if len(opseg_datuma) == 2:
-        start_datum, end_datum = opseg_datuma
-    elif len(opseg_datuma) == 1:
-        start_datum = end_datum = opseg_datuma[0]
-elif opseg_datuma:
-    start_datum = end_datum = opseg_datuma
+            c_svi, c_ocisti = st.columns(2)
+            with c_svi:
+                if st.button("Označi sve dane", use_container_width=True):
+                    st.session_state[datum_key] = sorted(dostupni_iso)
+                    st.rerun()
+            with c_ocisti:
+                if st.button("Očisti izbor", use_container_width=True):
+                    st.session_state[datum_key] = []
+                    st.rerun()
 
-if start_datum and end_datum and start_datum > end_datum:
-    start_datum, end_datum = end_datum, start_datum
+            st.markdown("**PON UTO SRE ČET PET SUB NED**")
+            kal = calendar.Calendar(firstweekday=0)
+            for nedelja in kal.monthdayscalendar(izabrani_mesec.year, izabrani_mesec.month):
+                cols = st.columns(7)
+                for i, dan in enumerate(nedelja):
+                    if dan == 0:
+                        cols[i].markdown(" ")
+                        continue
+                    d = date(izabrani_mesec.year, izabrani_mesec.month, dan)
+                    d_iso = d.isoformat()
+                    if d_iso not in dostupni_iso:
+                        cols[i].button(str(dan), disabled=True, use_container_width=True, key=f"day_disabled_{d_iso}")
+                    else:
+                        oznacen = d_iso in st.session_state[datum_key]
+                        label = f"✓ {dan}" if oznacen else str(dan)
+                        if cols[i].button(label, use_container_width=True, key=f"day_toggle_{d_iso}"):
+                            if oznacen:
+                                st.session_state[datum_key].remove(d_iso)
+                            else:
+                                st.session_state[datum_key].append(d_iso)
+                                st.session_state[datum_key] = sorted(set(st.session_state[datum_key]))
+                            st.rerun()
 
-izabrani_datumi = []
-if start_datum and end_datum:
-    izabrani_datumi = [d for d in svi_datumi if start_datum <= d <= end_datum]
+izabrani_datumi = [date.fromisoformat(d) for d in st.session_state[datum_key] if d in dostupni_iso]
 
 with f2:
-    izabrani_projekti = st.multiselect("Projekat", svi_projekti, default=svi_projekti)
+    projekat_filter = st.selectbox("Projekat", ["SVI"] + svi_projekti, index=0)
+izabrani_projekti = svi_projekti if projekat_filter == "SVI" else [projekat_filter]
+
 with f3:
-    izabrani_procesi = st.multiselect("Proces", svi_procesi, default=svi_procesi)
+    proces_filter = st.selectbox("Proces", ["SVI"] + svi_procesi, index=0)
+izabrani_procesi = svi_procesi if proces_filter == "SVI" else [proces_filter]
 
 # Mašine zavise od projekta/procesa.
 df_za_masine = df.copy()
@@ -2743,7 +2871,9 @@ if izabrani_procesi:
     df_za_masine = df_za_masine[df_za_masine["Proces"].isin(izabrani_procesi)]
 sve_masine = sorted(df_za_masine["Masina"].dropna().unique())
 with f4:
-    izabrane_masine = st.multiselect("Mašina", sve_masine, default=sve_masine)
+    masina_filter = st.selectbox("Mašina", ["SVE"] + sve_masine, index=0)
+izabrane_masine = sve_masine if masina_filter == "SVE" else [masina_filter]
+
 with f5:
     tip_grafikona = st.selectbox("Grafikon", ["Stubičasti", "Linijski", "Površinski"], index=0)
 st.markdown('</div>', unsafe_allow_html=True)
